@@ -70,4 +70,5 @@ if __name__ == "__main__":
             queried_date = date(year, month, day)
             queried_time = time(hour, minute)  # Par exemple, 20h00 (nuit)
             sensor = Sensor(store_id=1, sensor_id=1, date_obj=init_date, heure_obj=queried_time)
+            sensor2 = Sensor(store_id=2, sensor_id=1, date_obj=init_date, heure_obj=queried_time)
             print(f"{init_date.isoformat()} - {queried_time.isoformat()} -> {sensor.visiteur_jour_heure()}")
