@@ -1,2 +1,4 @@
 .idea/
 venv/
+src/test_code.py
+src/__pycache__/
