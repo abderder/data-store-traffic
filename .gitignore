@@ -3,5 +3,4 @@ venv/
 src/test_code.py
 src/__pycache__/
 test/__init__.py
-test/__pycache__*
 

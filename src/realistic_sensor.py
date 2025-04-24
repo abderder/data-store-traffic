@@ -17,7 +17,7 @@ def RealisticSensorPerHour(
         0: 0.8,  # Lundi
         1: 0.9,  # Mardi
         2: 1.0,  # Mercredi
-        3: 1.1,  # Jeudi
+        3: 0.9,  # Jeudi
         4: 1.2,  # Vendredi
     }
 
@@ -66,12 +66,12 @@ def RealisticSensorPerHour(
 
 
 def RealisticSensorPerDay(
-    store_id: int, sensor_id: int, date_obj: date, coef_store: float, coef_sensor: float
+    store_id: int, sensor_id: int, date_obj: date, coef_store: float, coef_sensor: float, close_hour: int = 20
 ) -> int:
     if date_obj.weekday() in (5, 6):
         return -1
     nb_visiteurs_total = 0
-    for heure in range(9, 20):
+    for heure in range(9, close_hour):
         visiteurs = RealisticSensorPerHour(
             store_id, sensor_id, date_obj, time(heure, 0), coef_store, coef_sensor
         )
@@ -79,28 +79,36 @@ def RealisticSensorPerDay(
             nb_visiteurs_total += visiteurs
     return nb_visiteurs_total
 
-def RealisticStoreSensorPerHour(store_id: int, sensor_data: list, date_obj: date, heure_obj: time,
-                           coef_store: float) -> int:
+
+def RealisticStoreSensorPerHour(
+    store_id: int, sensor_data: list, date_obj: date, heure_obj: time, coef_store: float
+) -> int:
     if date_obj.weekday() in (5, 6):
         return -1
-    
+
     total_visiteurs = 0
 
     for sensor_id, coef_sensor in sensor_data:
-        visiteurs = RealisticSensorPerHour(store_id, sensor_id, date_obj, heure_obj, coef_store, coef_sensor)
+        visiteurs = RealisticSensorPerHour(
+            store_id, sensor_id, date_obj, heure_obj, coef_store, coef_sensor
+        )
         if visiteurs is not None:
             total_visiteurs += visiteurs  # Accumuler les visiteurs
     return total_visiteurs
 
-def RealisticStoreSensorPerDay(store_id: int, sensor_data: list, date_obj: date,
-                           coef_store: float) -> int:
+
+def RealisticStoreSensorPerDay(
+    store_id: int, sensor_data: list, date_obj: date, coef_store: float, close_hour: int = 20
+) -> int:
     if date_obj.weekday() in (5, 6):
         return -1
-    
+
     total_visiteurs = 0
-    for heure in range(9, 20):
+    for heure in range(9, close_hour):
         for sensor_id, coef_sensor in sensor_data:
-            visiteurs = RealisticSensorPerHour(store_id, sensor_id, date_obj, time(heure, 0), coef_store, coef_sensor)
+            visiteurs = RealisticSensorPerHour(
+                store_id, sensor_id, date_obj, time(heure, 0), coef_store, coef_sensor
+            )
             if visiteurs is not None:
                 total_visiteurs += visiteurs  # Accumuler les visiteurs
 
