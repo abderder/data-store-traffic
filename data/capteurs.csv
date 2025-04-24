@@ -1,0 +1,84 @@
+sensor_id,store_id,door_name,coef
+1,1,entrée,1.18
+2,1,caisse,0.81
+3,1,rayon promo,1.1
+4,1,rayon vêtements,0.84
+5,1,sortie,1.18
+6,1,rayon vêtements,0.84
+7,1,rayon électro,0.64
+8,1,rayon électro,0.64
+9,1,entrée,1.18
+10,1,caisse,0.81
+11,1,caisse,0.81
+12,1,rayon vêtements,0.84
+13,2,entrée,1.18
+14,2,rayon promo,1.1
+15,2,sortie,1.18
+16,2,rayon électro,0.64
+17,2,rayon électro,0.64
+18,2,rayon promo,1.1
+19,2,entrée,1.18
+20,2,rayon électro,0.64
+21,2,rayon promo,1.1
+22,2,rayon promo,1.1
+23,3,caisse,0.81
+24,3,rayon électro,0.64
+25,3,sortie,1.18
+26,3,sortie,1.18
+27,3,rayon promo,1.1
+28,3,rayon vêtements,0.84
+29,3,sortie,1.18
+30,3,rayon promo,1.1
+31,3,rayon électro,0.64
+32,3,rayon promo,1.1
+33,4,rayon électro,0.64
+34,4,sortie,1.18
+35,4,caisse,0.81
+36,4,caisse,0.81
+37,4,rayon promo,1.1
+38,4,sortie,1.18
+39,4,sortie,1.18
+40,4,rayon électro,0.64
+41,4,entrée,1.18
+42,5,caisse,0.81
+43,5,caisse,0.81
+44,5,entrée,1.18
+45,5,rayon promo,1.1
+46,5,rayon promo,1.1
+47,5,rayon vêtements,0.84
+48,5,rayon vêtements,0.84
+49,5,caisse,0.81
+50,6,caisse,0.81
+51,6,caisse,0.81
+52,6,sortie,1.18
+53,6,sortie,1.18
+54,6,rayon promo,1.1
+55,6,rayon vêtements,0.84
+56,6,rayon vêtements,0.84
+57,7,rayon électro,0.64
+58,7,rayon électro,0.64
+59,7,rayon promo,1.1
+60,7,entrée,1.18
+61,7,rayon électro,0.64
+62,7,rayon promo,1.1
+63,7,sortie,1.18
+64,7,rayon vêtements,0.84
+65,8,entrée,1.18
+66,8,rayon vêtements,0.84
+67,8,caisse,0.81
+68,8,rayon vêtements,0.84
+69,8,rayon vêtements,0.84
+70,8,entrée,1.18
+71,8,rayon électro,0.64
+72,9,entrée,1.18
+73,9,sortie,1.18
+74,9,caisse,0.81
+75,9,rayon promo,1.1
+76,9,sortie,1.18
+77,9,sortie,1.18
+78,9,sortie,1.18
+79,10,rayon vêtements,0.84
+80,10,caisse,0.81
+81,10,sortie,1.18
+82,10,caisse,0.81
+83,10,entrée,1.18
