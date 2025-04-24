@@ -36,7 +36,7 @@ class Sensor:
             chance = random.random()
             if chance > 0.001:
                 return 0
-            return random.randint(1, 10)
+            return random.randint(1, 3)
 
         # Période active (journée)
         chance2 = random.random()
@@ -48,7 +48,7 @@ class Sensor:
             return None
         if chance3 < 0.75:
             return random.randint(900, 1200)
-        return random.randint(1, 3)
+        return random.randint(1, 2)
 
 
 if __name__ == "__main__":
