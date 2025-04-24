@@ -5,9 +5,21 @@ import pandas as pd
 from datetime import date, time, timedelta, datetime
 from src.realistic_sensor import RealisticSensorPerDay, RealisticSensorPerHour
 from src.realistic_sensor import RealisticStoreSensorPerDay, RealisticStoreSensorPerHour
+from azure.storage.blob import BlobServiceClient
+import pandas as pd
+from io import StringIO
+from dotenv import load_dotenv
+import os
 
-magasins = pd.read_csv("./data/magasins.csv")
-capteurs = pd.read_csv("./data/capteurs.csv")
+# Charger les variables d'environnement
+load_dotenv()
+
+# Récupérer les infos du .env
+sas_token = os.getenv("BLOB_SAS_TOKEN")
+base_url = os.getenv("Blob_SAS_URL")
+
+magasins = pd.read_csv(f"{base_url}/magasins.csv?{sas_token}")
+capteurs = pd.read_csv(f"{base_url}/capteurs.csv?{sas_token}")
 
 
 app = FastAPI()
@@ -75,7 +87,7 @@ def visit(
         except ValueError:
             raise HTTPException(status_code=404, detail="La date est invalide !")
         # Vérifie si la date est dans le futur
-        if d > today:
+        if d > today or d < date.fromisoformat("2021-01-01"):
             return JSONResponse(
                 status_code=200,
                 content={"message": "Data non disponible pour cette date"},
@@ -144,7 +156,7 @@ def visit(
                 "visiteurs": visiteurs,
             },
         )
-    if all(param is None for param in [year, month, day, hour]):
+    if all(param is None for param in [year, month, day, hour]) or (d == today):
         coef_sensor = next(
             (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
             None,
@@ -169,5 +181,72 @@ def visit(
                 "visiteurs": visiteurs,
             },
         )
+    if hour is None:
+        coef_sensor = next(
+            (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
+            None,
+        )
+        visiteurs = RealisticSensorPerDay(
+            storeid, sensor_id, d, coef_store, coef_sensor
+        )
+        if visiteurs == -1:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": f"Magasin fermé!",
+                    "is_closed": True,
+                    "visiteurs": visiteurs,
+                },
+            )
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": f"Nombre de visiteurs le {today} pour capteur {sensor_id} est : {visiteurs}",
+                "is_closed": False,
+                "visiteurs": visiteurs,
+            },
+        )
+    if sensor_id is None:
+        visiteurs = RealisticStoreSensorPerHour(storeid, sensors_data, d, t, coef_store)
+        if visiteurs == -1:
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "message": f"Magasin fermé!",
+                    "is_closed": True,
+                    "visiteurs": visiteurs,
+                },
+            )
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": f"Nombre de visiteurs le {d} à  {t} est : {visiteurs}",
+                "is_closed": False,
+                "visiteurs": visiteurs,
+            },
+        )
 
-    return JSONResponse(status_code=200, content=f"Hello {store_name}, {storeid}")
+    coef_sensor = next(
+        (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
+        None,
+    )
+    visiteurs = RealisticSensorPerHour(
+        storeid, sensor_id, d, t, coef_store, coef_sensor
+    )
+    if visiteurs == -1:
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": f"Magasin fermé!",
+                "is_closed": True,
+                "visiteurs": visiteurs,
+            },
+        )
+    return JSONResponse(
+        status_code=200,
+        content={
+            "message": f"Nombre de visiteurs le {d} à {t} pour capteur {sensor_id} est : {visiteurs}",
+            "is_closed": False,
+            "visiteurs": visiteurs,
+        },
+    )

@@ -66,7 +66,12 @@ def RealisticSensorPerHour(
 
 
 def RealisticSensorPerDay(
-    store_id: int, sensor_id: int, date_obj: date, coef_store: float, coef_sensor: float, close_hour: int = 20
+    store_id: int,
+    sensor_id: int,
+    date_obj: date,
+    coef_store: float,
+    coef_sensor: float,
+    close_hour: int = 20,
 ) -> int:
     if date_obj.weekday() in (5, 6):
         return -1
@@ -98,7 +103,11 @@ def RealisticStoreSensorPerHour(
 
 
 def RealisticStoreSensorPerDay(
-    store_id: int, sensor_data: list, date_obj: date, coef_store: float, close_hour: int = 20
+    store_id: int,
+    sensor_data: list,
+    date_obj: date,
+    coef_store: float,
+    close_hour: int = 20,
 ) -> int:
     if date_obj.weekday() in (5, 6):
         return -1
