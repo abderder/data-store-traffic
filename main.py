@@ -10,6 +10,8 @@ import pandas as pd
 from io import StringIO
 from dotenv import load_dotenv
 import os
+import hashlib
+import random
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -250,3 +252,89 @@ def visit(
             "visiteurs": visiteurs,
         },
     )
+
+
+@app.get("/transactions")
+def simuler_transactions(
+    city_store: str,
+    year: int,
+    month: int,
+    day: int,
+    hour: int
+
+) -> JSONResponse:
+    if city_store.lower() not in magasins["city_store"].str.lower().values:
+        raise HTTPException(status_code=404, detail="Store non disponible")
+    try:
+        date_transaction = datetime(year, month, day, hour)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Date invalide")
+    
+    now = datetime.now()
+    if date_transaction > now or date_transaction.date() < date.fromisoformat("2021-01-01") :
+        return JSONResponse(content={"result": "pas de data"})
+    
+    if date_transaction.weekday() >= 5:  # 5 = samedi, 6 = dimanche
+        return JSONResponse(status_code=404,content={"result": -1})
+    
+    if hour > 19 or hour < 9:
+        return JSONResponse(content={"result": 0})
+
+
+     #Génération d'une seed unique
+    texte = f"{day}/{month}/{year}-{hour}-{city_store}"
+    hash_obj = hashlib.sha256(texte.encode())
+    seed = int(hash_obj.hexdigest(), 16)
+    random.seed(seed)
+
+    
+    
+    storeid = magasins.loc[
+        magasins["city_store"].str.contains(city_store, case=False), "store_id"
+    ].iloc[0]
+    coef_store = magasins.loc[
+        magasins["city_store"].str.contains(city_store, case=False), "coef"
+    ].iloc[0]
+    sensors_data = list(
+        capteurs.loc[capteurs["store_id"] == storeid, ["sensor_id", "coef"]].itertuples(
+            index=False, name=None
+        )
+    )
+    coef_date = {
+        0: 0.4,  # Lundi
+        1: 0.5,  # Mardi
+        2: 0.6,  # Mercredi
+        3: 0.5,  # Jeudi
+        4: 0.6,  # Vendredi
+    }
+
+    coef_heure = {
+        9: 0.3,
+        10: 0.5,
+        11: 0.6,
+        12: 0.7,
+        13: 0.9,
+        14: 0.6,
+        15: 0.6,
+        16: 0.6,
+        17: 0.9,
+        18: 0.9,
+        19: 0.7,
+    }
+    visiteurs = random.randint(90, 120)
+    date_coeff = coef_date.get(date_transaction.weekday(), 1.0)
+    heure_coef = coef_heure.get(hour, 1.0)
+    base_visiteurs = visiteurs * coef_store * date_coeff * heure_coef
+    visiteurs_totaux = int(base_visiteurs * sum(coef for _, coef in sensors_data))
+
+    taux_conversion = random.uniform(0.15, 0.30)
+    transactions = int(visiteurs_totaux * taux_conversion)
+    montants_transactions = [random.uniform(10, 120) for _ in range(transactions)]
+    chiffre_affaires = sum(montants_transactions)
+    return JSONResponse(content={
+        "transactions": transactions,
+        "chiffre_affaires": round(chiffre_affaires, 2)
+    })
+    
+
+
