@@ -4,4 +4,5 @@ src/test_code.py
 src/__pycache__/
 test/__init__.py
 .env
-
+test/__pycache__/__init__.cpython-310.pyc
+test/__pycache__/test_sensor.cpython-310.pyc

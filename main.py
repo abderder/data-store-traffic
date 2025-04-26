@@ -27,7 +27,7 @@ app = FastAPI()
 
 @app.get("/visiteurs")
 def visit(
-    store_name: str = None,
+    city_store: str = None,
     year: int | None = None,
     month: int | None = None,
     day: int | None = None,
@@ -35,18 +35,18 @@ def visit(
     sensor_id: int | None = None,
 ) -> JSONResponse:
     # Store name vérification
-    if store_name is None or store_name.strip() == "":
-        raise HTTPException(status_code=404, detail="Nom du magasin obligatoire")
+    if city_store is None or city_store.strip() == "":
+        raise HTTPException(status_code=404, detail="Ville du magasin obligatoire")
 
-    if store_name.lower() not in magasins["store_name"].str.lower().values:
+    if city_store.lower() not in magasins["city_store"].str.lower().values:
         raise HTTPException(status_code=404, detail="Store non disponible")
 
     # Sensors verification
     storeid = magasins.loc[
-        magasins["store_name"].str.contains(store_name, case=False), "store_id"
+        magasins["city_store"].str.contains(city_store, case=False), "store_id"
     ].iloc[0]
     coef_store = magasins.loc[
-        magasins["store_name"].str.contains(store_name, case=False), "coef"
+        magasins["city_store"].str.contains(city_store, case=False), "coef"
     ].iloc[0]
     sensors_data = list(
         capteurs.loc[capteurs["store_id"] == storeid, ["sensor_id", "coef"]].itertuples(
@@ -116,7 +116,7 @@ def visit(
     if (all(param is None for param in [year, month, day, hour, sensor_id])) or (
         d == today
     ):
-        # Exécuter la fonction spéciale si juste store_name est donné
+        # Exécuter la fonction spéciale si juste city_store est donné
         visiteurs = RealisticStoreSensorPerDay(
             storeid, sensors_data, today, coef_store, one_hour_ago
         )
