@@ -256,39 +256,44 @@ def visit(
 
 @app.get("/transactions")
 def simuler_transactions(
-    city_store: str,
-    year: int,
-    month: int,
-    day: int,
-    hour: int
-
+    city_store: str, year: int, month: int, day: int, hour: int
 ) -> JSONResponse:
     if city_store.lower() not in magasins["city_store"].str.lower().values:
-        raise HTTPException(status_code=404, detail="Store non disponible")
+        raise HTTPException(status_code=404, detail="Magasin introuvable")
     try:
         date_transaction = datetime(year, month, day, hour)
     except ValueError:
-        raise HTTPException(status_code=404, detail="Date invalide")
-    
+        raise HTTPException(status_code=400, detail="Date ou heure invalide")
+
     now = datetime.now()
-    if date_transaction > now or date_transaction.date() < date.fromisoformat("2021-01-01") :
-        return JSONResponse(content={"result": "pas de data"})
-    
+    if date_transaction > now or date_transaction.date() < date.fromisoformat(
+        "2021-01-01"
+    ):
+        return JSONResponse(
+            status_code=404, content={"message": "Pas de données pour cette date"}
+        )
+
     if date_transaction.weekday() >= 5:  # 5 = samedi, 6 = dimanche
-        return JSONResponse(status_code=404,content={"result": -1})
-    
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Magasin fermé le week-end",
+                "transactions": -1,
+                "chiffre_affaires": -1,
+            },
+        )
+
     if hour > 19 or hour < 9:
-        return JSONResponse(content={"result": 0})
+        return JSONResponse(
+            status_code=200, content={"transactions": 0, "chiffre_affaires": 0}
+        )
 
-
-     #Génération d'une seed unique
+    # Génération d'une seed unique
     texte = f"{day}/{month}/{year}-{hour}-{city_store}"
     hash_obj = hashlib.sha256(texte.encode())
     seed = int(hash_obj.hexdigest(), 16)
     random.seed(seed)
 
-    
-    
     storeid = magasins.loc[
         magasins["city_store"].str.contains(city_store, case=False), "store_id"
     ].iloc[0]
@@ -331,10 +336,10 @@ def simuler_transactions(
     transactions = int(visiteurs_totaux * taux_conversion)
     montants_transactions = [random.uniform(10, 120) for _ in range(transactions)]
     chiffre_affaires = sum(montants_transactions)
-    return JSONResponse(content={
-        "transactions": transactions,
-        "chiffre_affaires": round(chiffre_affaires, 2)
-    })
-    
-
-
+    return JSONResponse(
+        status_code=200,
+        content={
+            "transactions": transactions,
+            "chiffre_affaires": round(chiffre_affaires, 2),
+        },
+    )
