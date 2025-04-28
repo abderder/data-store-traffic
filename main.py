@@ -288,12 +288,6 @@ def simuler_transactions(
             status_code=200, content={"transactions": 0, "chiffre_affaires": 0}
         )
 
-    # Génération d'une seed unique
-    texte = f"{day}/{month}/{year}-{hour}-{city_store}"
-    hash_obj = hashlib.sha256(texte.encode())
-    seed = int(hash_obj.hexdigest(), 16)
-    random.seed(seed)
-
     storeid = magasins.loc[
         magasins["city_store"].str.contains(city_store, case=False), "store_id"
     ].iloc[0]
@@ -326,6 +320,12 @@ def simuler_transactions(
         18: 0.9,
         19: 0.7,
     }
+    # Génération d'une seed unique
+    texte = f"{day}/{month}/{year}-{hour}-{storeid}"
+    hash_obj = hashlib.sha256(texte.encode())
+    seed = int(hash_obj.hexdigest(), 16)
+    random.seed(seed)
+
     visiteurs = random.randint(90, 120)
     date_coeff = coef_date.get(date_transaction.weekday(), 1.0)
     heure_coef = coef_heure.get(hour, 1.0)
