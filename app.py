@@ -52,6 +52,8 @@ def main():
     visiteurs_df = get_visiteurs_data(conn)
     transactions_df = get_transactions_data(conn)
     sensors_df, stores_df = load_csv_data()
+    stores_df = stores_df[["store_id", "city_store"]]
+    sensors_df = sensors_df[["store_id", "sensor_id","door_name"]]
 
     # Fusion avec infos des magasins
     visiteurs_df = visiteurs_df.merge(stores_df, on="store_id", how="left")
@@ -61,17 +63,20 @@ def main():
     magasin = st.sidebar.selectbox(
         "Sélectionnez un magasin :", stores_df["city_store"].unique()
     )
+    capteurs_disponibles = visiteurs_df[visiteurs_df["city_store"] == magasin]['sensor_id'].unique()
+    capteurs_selectionnés = st.sidebar.multiselect(
+        "Choisissez un ou plusieurs capteurs :", 
+        options=capteurs_disponibles, 
+        default=capteurs_disponibles
+    )
 
     # Filtrage
-    visiteurs_filtrés = visiteurs_df[visiteurs_df["city_store"] == magasin]
+    visiteurs_filtrés = visiteurs_df[
+    (visiteurs_df["city_store"] == magasin) &
+    (visiteurs_df["sensor_id"].isin(capteurs_selectionnés))
+    ]
     transactions_filtrées = transactions_df[transactions_df["city_store"] == magasin]
 
-    # Affichage
-    st.subheader("👣 Données de fréquentation (visiteurs)")
-    st.dataframe(visiteurs_filtrés)
-
-    st.subheader("💳 Données de transactions")
-    st.dataframe(transactions_filtrées)
 
     # Graphiques
     st.subheader("📈 Visiteurs par heure")
