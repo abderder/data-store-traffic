@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 import os
 import hashlib
 import random
+import pytz
+
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -81,7 +83,9 @@ def visit(
             status_code=404,
             detail="Si tu donnes une heure, la date (year, month, day) doit être complète.",
         )
-    today = date.today()
+    paris_tz = pytz.timezone("Europe/Paris")
+    now = datetime.now(paris_tz)
+    today = now.date()
     d = None
     if all(filled):
         try:
@@ -96,7 +100,7 @@ def visit(
             )
 
     # Heure vérification
-    now = datetime.now()
+    now = datetime.now(paris_tz)
     current_hour = now.hour
     one_hour_ago = (current_hour - 1) % 24
     if hour is not None:
@@ -107,7 +111,7 @@ def visit(
                 status_code=404,
                 detail="L'heure est invalide ! L'heure doit être compris entre 0 et 23",
             )
-        now = datetime.now()
+        now = datetime.now(paris_tz)
         current_hour = now.hour
         if d == today:
             if t.hour > one_hour_ago:
@@ -258,14 +262,14 @@ def visit(
 def simuler_transactions(
     city_store: str, year: int, month: int, day: int, hour: int
 ) -> JSONResponse:
+    paris_tz = pytz.timezone("Europe/Paris")
     if city_store.lower() not in magasins["city_store"].str.lower().values:
         raise HTTPException(status_code=404, detail="Magasin introuvable")
     try:
-        date_transaction = datetime(year, month, day, hour)
+        date_transaction = paris_tz.localize(datetime(year, month, day, hour))
     except ValueError:
         raise HTTPException(status_code=400, detail="Date ou heure invalide")
-
-    now = datetime.now()
+    now = datetime.now(paris_tz)
     if date_transaction > now or date_transaction.date() < date.fromisoformat(
         "2021-01-01"
     ):
