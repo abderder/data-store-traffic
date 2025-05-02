@@ -32,15 +32,21 @@ def load_csv_data():
     return sensors_df, stores_df
 
 
-# Requêtes SQL
-def get_visiteurs_data(conn):
+def get_visiteurs_data():
+    conn = connect_to_azure_sql()
     query = "SELECT * FROM analytics.visiteurs"
-    return pd.read_sql(query, conn)
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
 
 
-def get_transactions_data(conn):
+def get_transactions_data():
+    conn = connect_to_azure_sql()
     query = "SELECT * FROM analytics.transactions"
-    return pd.read_sql(query, conn)
+    df = pd.read_sql(query, conn)
+    conn.close()
+    return df
+
 
 
 # Interface Streamlit
@@ -48,9 +54,8 @@ def main():
     st.title("📊 Dashboard Analytics des Magasins")
 
     # Chargement données
-    conn = connect_to_azure_sql()
-    visiteurs_df = get_visiteurs_data(conn)
-    transactions_df = get_transactions_data(conn)
+    visiteurs_df = get_visiteurs_data()
+    transactions_df = get_transactions_data()
     sensors_df, stores_df = load_csv_data()
     stores_df = stores_df[["store_id", "city_store"]]
     sensors_df = sensors_df[["store_id", "sensor_id","door_name"]]

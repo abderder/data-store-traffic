@@ -120,7 +120,7 @@ def visit(
                     content={"message": "Data non disponible pour cette date"},
                 )
     if (all(param is None for param in [year, month, day, hour, sensor_id])) or (
-        d == today
+        d == today and hour is None and sensor_id is None
     ):
         # Exécuter la fonction spéciale si juste city_store est donné
         visiteurs = RealisticStoreSensorPerDay(
@@ -162,7 +162,7 @@ def visit(
                 "visiteurs": visiteurs,
             },
         )
-    if all(param is None for param in [year, month, day, hour]) or (d == today):
+    if all(param is None for param in [year, month, day, hour]) or (d == today and hour is None):
         coef_sensor = next(
             (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
             None,
