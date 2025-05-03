@@ -162,7 +162,9 @@ def visit(
                 "visiteurs": visiteurs,
             },
         )
-    if all(param is None for param in [year, month, day, hour]) or (d == today and hour is None):
+    if all(param is None for param in [year, month, day, hour]) or (
+        d == today and hour is None
+    ):
         coef_sensor = next(
             (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
             None,
