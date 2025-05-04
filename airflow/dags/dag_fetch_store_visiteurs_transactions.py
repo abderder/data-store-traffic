@@ -27,6 +27,7 @@ dag = DAG(
 local_dir = "/tmp/store_data"
 os.makedirs(local_dir, exist_ok=True)
 
+
 def download_csv_from_blob():
     conn = BaseHook.get_connection("azure_blob_conn_id1")
     extras = conn.extra_dejson
@@ -42,13 +43,15 @@ def download_csv_from_blob():
     magasins.to_csv(f"{local_dir}/magasins.csv", index=False)
     capteurs.to_csv(f"{local_dir}/capteurs.csv", index=False)
 
+
 def fetch_data_from_api(ti):
     os.makedirs(local_dir, exist_ok=True)
     magasins = pd.read_csv(f"{local_dir}/magasins.csv")
     capteurs = pd.read_csv(f"{local_dir}/capteurs.csv")
 
-    now = datetime.utcnow()
-    year, month, day, hour = now.year, now.month, now.day, now.hour-1
+    # now = datetime.utcnow()
+    # year, month, day, hour = now.year, now.month, now.day, now.hour-1
+    year, month, day, hour = 2025, 5, 2, 12
 
     all_visiteurs = []
     all_transactions = []
@@ -68,13 +71,15 @@ def fetch_data_from_api(ti):
             if r.status_code == 200:
                 data = r.json()
                 print(f"data : {data}")
-                all_visiteurs.append({
-                    "store_id": store_id,
-                    "sensor_id": sensor_id,
-                    "date": f"{year}-{month:02d}-{day:02d}",
-                    "hour": f"{hour:02d}:00:00",
-                    "nb_visiteurs": data["visiteurs"]
-                })
+                all_visiteurs.append(
+                    {
+                        "store_id": store_id,
+                        "sensor_id": sensor_id,
+                        "date": f"{year}-{month:02d}-{day:02d}",
+                        "heure": f"{hour:02d}:00:00",
+                        "nb_visiteurs": data["visiteurs"],
+                    }
+                )
 
         # transactions
         url = f"https://data-store-traffic.onrender.com/transactions?city_store={city_store}&year={year}&month={month}&day={day}&hour={hour}"
@@ -83,13 +88,15 @@ def fetch_data_from_api(ti):
         if r.status_code == 200:
             data = r.json()
             print(f"data : {data}")
-            all_transactions.append({
-                "store_id": store_id,
-                "date": f"{year}-{month:02d}-{day:02d}",
-                "hour": f"{hour:02d}:00:00",
-                "transactions": data["transactions"],
-                "chiffre_affaires": data["chiffre_affaires"]
-            })
+            all_transactions.append(
+                {
+                    "store_id": store_id,
+                    "date": f"{year}-{month:02d}-{day:02d}",
+                    "heure": f"{hour:02d}:00:00",
+                    "transactions": data["transactions"],
+                    "chiffre_affaires": data["chiffre_affaires"],
+                }
+            )
 
     # Sauvegarde les deux datasets localement
     df_visiteurs = pd.DataFrame(all_visiteurs)
@@ -97,7 +104,13 @@ def fetch_data_from_api(ti):
 
     # Définir le schéma attendu
     visiteurs_columns = ["store_id", "sensor_id", "date", "hour", "nb_visiteurs"]
-    transactions_columns = ["store_id", "date", "hour", "transactions", "chiffre_affaires"]
+    transactions_columns = [
+        "store_id",
+        "date",
+        "hour",
+        "transactions",
+        "chiffre_affaires",
+    ]
 
     # Visiteurs
     if df_visiteurs.empty:
@@ -116,17 +129,21 @@ def upload_to_blob():
     sas_url = extras["sas_url"]
     sas_token = extras["sas_token"]
 
-    now = datetime.utcnow()
-    date_str = now.strftime("%Y-%m-%d")
-    hour_str = now.strftime("%H")
+    # now = datetime.utcnow()
+    # date_str = now.strftime("%Y-%m-%d")
+    # hour_str = now.strftime("%H")
+    year, month, day, hour = 2025, 5, 2, 12
+    date_str = "2025-05-02"
+    hour_str = 12
 
     # Découper sas_url correctement
     parsed_url = urllib.parse.urlparse(sas_url)
-    account_url = f"{parsed_url.scheme}://{parsed_url.netloc}"     
-    container_name = parsed_url.path.strip("/")         
-    
+    account_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+    container_name = parsed_url.path.strip("/")
 
-    blob_service_client = BlobServiceClient(account_url=account_url, credential=sas_token)
+    blob_service_client = BlobServiceClient(
+        account_url=account_url, credential=sas_token
+    )
     container_client = blob_service_client.get_container_client(container_name)
     # Upload visiteurs
     with open(f"{local_dir}/visiteurs.parquet", "rb") as f:
@@ -138,9 +155,11 @@ def upload_to_blob():
         path = f"transactions/date={date_str}/hour={hour_str}/data.parquet"
         container_client.upload_blob(path, f, overwrite=True)
 
+
 def clean_up_local_files():
     if os.path.exists(local_dir):
         shutil.rmtree(local_dir)
+
 
 # Définition des tâches Airflow
 t1 = PythonOperator(
@@ -167,4 +186,4 @@ t4 = PythonOperator(
 )
 
 
-t1 >> t2 >> t3 >> t4 # Ordre d'exécution
+t1 >> t2 >> t3 >> t4  # Ordre d'exécution
