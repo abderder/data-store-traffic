@@ -87,7 +87,7 @@ def main():
         lambda h: f"{int(h):02d}:00"
     )
 
-    # 🎛️ Filtres
+    # Filtres
     magasin = st.sidebar.selectbox("🏬 Magasin :", stores_df["city_store"].unique())
     capteurs = visiteurs_df[visiteurs_df["city_store"] == magasin]["sensor_id"].unique()
     capteurs_sel = st.sidebar.multiselect("🎯 Capteurs :", capteurs, default=capteurs)
@@ -107,7 +107,7 @@ def main():
         st.warning("📅 Veuillez sélectionner une plage de dates (début et fin).")
         st.stop()
 
-    # 🔹 VISITEURS
+    # VISITEURS
     visiteurs_filtrés = visiteurs_df[
         (visiteurs_df["city_store"] == magasin)
         & (visiteurs_df["sensor_id"].isin(capteurs_sel))
@@ -115,7 +115,7 @@ def main():
         & (visiteurs_df["date"].dt.date <= date_range[1])
         & (visiteurs_df["heure"].between(heure_range[0], heure_range[1]))
     ]
-    # 🔸 TRANSACTIONS
+    # TRANSACTIONS
     transactions_filtrées = transactions_df[
         (transactions_df["city_store"] == magasin)
         & (transactions_df["date"].dt.date >= date_range[0])
@@ -128,12 +128,12 @@ def main():
         )
         st.stop()
 
-    st.subheader("👥 Visiteurs")
+    st.subheader("🎟️ Données des visiteurs")
     col1, col2 = st.columns(2)
     col1.metric("Total visiteurs", int(visiteurs_filtrés["nb_visiteurs"].sum()))
     col2.metric("Capteurs actifs", visiteurs_filtrés["sensor_id"].nunique())
 
-    # ✅ Agrégation + datetime propre pour le graphe
+    # Agrégation + datetime propre pour le graphe
     visiteurs_plot = visiteurs_filtrés.groupby(
         ["sensor_id", "date", "heure"], as_index=False
     )["nb_visiteurs"].sum()
@@ -144,7 +144,7 @@ def main():
         visiteurs_plot["date"].astype(str) + " " + visiteurs_plot["heure_str"]
     )
     visiteurs_plot = visiteurs_plot.sort_values("datetime")
-    # ✅ Limiter à 3 derniers jours pour ce graphe uniquement
+    # Limiter à 3 derniers jours pour ce graphe uniquement
     nb_jours_max = 3
     dates_disponibles = sorted(visiteurs_plot["date"].unique())
     dates_limite = dates_disponibles[:nb_jours_max]
@@ -165,7 +165,7 @@ def main():
     )
     st.plotly_chart(fig_v1, use_container_width=True)
 
-    st.subheader("💸 Transactions")
+    st.subheader("💸 Données des Transactions")
     col3, col4 = st.columns(2)
     col3.metric("Transactions", int(transactions_filtrées["nb_transactions"].sum()))
     col4.metric("CA (€)", f"{transactions_filtrées['chiffre_affaires'].sum():,.0f}")
@@ -175,7 +175,7 @@ def main():
         + " "
         + transactions_filtrées["heure_str"]
     )
-    # ✅ Agrégation + datetime propre pour le graphe CA
+    # Agrégation + datetime propre pour le graphe CA
     transactions_plot = transactions_filtrées.groupby(
         ["date", "heure"], as_index=False
     ).agg({"chiffre_affaires": "sum"})
@@ -201,9 +201,10 @@ def main():
         labels={"datetime": "Date", "chiffre_affaires": "Chiffre d'affaires (€)"},
     )
     fig_ca.update_layout(xaxis=dict(tickformat="%a %d %b"))
+    fig_ca.update_traces(line_color="#00A676")
     st.plotly_chart(fig_ca, use_container_width=True)
 
-    # 🔁 COMPARAISON AGRÉGÉE (avec tous les capteurs du magasin)
+    # COMPARAISON AGRÉGÉE (avec tous les capteurs du magasin)
     st.subheader("📉 Visiteurs vs Transactions (agrégés - tous capteurs)")
 
     visiteurs_magasin_agg = (
@@ -236,7 +237,7 @@ def main():
     )
     col6.metric("CA / Visiteur", f"{df_merge['ca_par_visiteur'].mean():.2f} €")
 
-    # ✅ Taux de conversion global par jour (pondéré)
+    # Taux de conversion global par jour (pondéré)
     df_conversion_jour = (
         df_merge.groupby(df_merge["date"].dt.date)
         .agg({"nb_visiteurs": "sum", "nb_transactions": "sum"})
@@ -256,10 +257,11 @@ def main():
         text="nb_visiteurs",
         title="Taux de conversion global par jour",
         labels={"date_str": "Date", "taux_conversion": "Taux de conversion"},
+        color_discrete_sequence=["#3D90D7"],
     )
     st.plotly_chart(fig_tc_jour, use_container_width=True)
 
-    # ✅ Taux de conversion global par heure (pondéré)
+    # Taux de conversion global par heure (pondéré)
     df_conversion = (
         df_merge.groupby("heure_str")
         .agg({"nb_visiteurs": "sum", "nb_transactions": "sum"})
@@ -276,6 +278,7 @@ def main():
         text="nb_visiteurs",  # facultatif : affiche le volume de visiteurs sur chaque barre
         title="Taux de conversion global par heure",
         labels={"heure_str": "Heure", "taux_conversion": "Taux de conversion"},
+        color_discrete_sequence=["#3B8ED0"],
     )
     st.plotly_chart(fig_tc, use_container_width=True)
 
