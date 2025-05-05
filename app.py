@@ -5,64 +5,44 @@ from datetime import datetime
 import pyodbc
 import os
 from dotenv import load_dotenv
+import duckdb
 
-# Chargement des variables d'environnement
-load_dotenv()
-
-
-# Connexion à Azure SQL
-def connect_to_azure_sql():
+# Connexion à DuckDB locale
+@st.cache_resource
+def connect_to_duckdb():
     try:
-        server = os.getenv("AZURE_SQL_SERVER")
-        conn = pyodbc.connect(
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={server};"
-            f"DATABASE={os.getenv('AZURE_SQL_DB')};"
-            f"UID={os.getenv('AZURE_SQL_USER')};"
-            f"PWD={os.getenv('AZURE_SQL_PASSWORD')}"
-        )
+        conn = duckdb.connect("duckdb/local_db.duckdb")
         return conn
     except Exception as e:
-        st.error(f"Échec de connexion : {e}")
+        st.error(f"Échec de connexion à DuckDB : {e}")
         return None
 
 
-sas_token = os.getenv("BLOB_SAS_TOKEN")
-base_url = os.getenv("Blob_SAS_URL")
-
-
-# Chargement des fichiers CSV (préalablement placés dans le conteneur et accessibles localement ou via un chemin)
+# Chargement des fichiers CSV en local
 @st.cache_data
 def load_csv_data():
-    stores_df = pd.read_csv(f"{base_url}/magasins.csv?{sas_token}")
-    sensors_df = pd.read_csv(f"{base_url}/capteurs.csv?{sas_token}")
+    stores_df = pd.read_csv("data/magasins.csv")
+    sensors_df = pd.read_csv("data/capteurs.csv")
     return sensors_df, stores_df
 
 
 def get_visiteurs_data(conn):
-    df = pd.read_sql(
-        "SELECT * FROM analytics.visiteurs where date like '2024-05-%'", conn
-    )
+    df = conn.execute("SELECT * FROM visiteurs").fetchdf()
     return df
 
-
 def get_transactions_data(conn):
-    df = pd.read_sql(
-        "SELECT * FROM analytics.transactions where date like '2024-05-%'", conn
-    )
+    df = conn.execute("SELECT * FROM transactions").fetchdf()
     return df
 
 
 @st.cache_data
 def load_cached_data():
-    conn = connect_to_azure_sql()
+    conn = connect_to_duckdb()
     if conn is None:
         st.stop()
     visiteurs_df = get_visiteurs_data(conn)
     transactions_df = get_transactions_data(conn)
-    conn.close()
     return visiteurs_df, transactions_df
-
 
 def main():
     st.title("📊 Dashboard Analytics des Magasins")
@@ -107,7 +87,7 @@ def main():
         st.warning("📅 Veuillez sélectionner une plage de dates (début et fin).")
         st.stop()
 
-    # 🔹 VISITEURS
+    # VISITEURS
     visiteurs_filtrés = visiteurs_df[
         (visiteurs_df["city_store"] == magasin)
         & (visiteurs_df["sensor_id"].isin(capteurs_sel))
@@ -115,7 +95,7 @@ def main():
         & (visiteurs_df["date"].dt.date <= date_range[1])
         & (visiteurs_df["heure"].between(heure_range[0], heure_range[1]))
     ]
-    # 🔸 TRANSACTIONS
+    # TRANSACTIONS
     transactions_filtrées = transactions_df[
         (transactions_df["city_store"] == magasin)
         & (transactions_df["date"].dt.date >= date_range[0])
@@ -128,12 +108,12 @@ def main():
         )
         st.stop()
 
-    st.subheader("👥 Visiteurs")
+    st.subheader("🎟️ Données des visiteurs")
     col1, col2 = st.columns(2)
     col1.metric("Total visiteurs", int(visiteurs_filtrés["nb_visiteurs"].sum()))
     col2.metric("Capteurs actifs", visiteurs_filtrés["sensor_id"].nunique())
 
-    # ✅ Agrégation + datetime propre pour le graphe
+    # Agrégation + datetime propre pour le graphe
     visiteurs_plot = visiteurs_filtrés.groupby(
         ["sensor_id", "date", "heure"], as_index=False
     )["nb_visiteurs"].sum()
@@ -144,7 +124,7 @@ def main():
         visiteurs_plot["date"].astype(str) + " " + visiteurs_plot["heure_str"]
     )
     visiteurs_plot = visiteurs_plot.sort_values("datetime")
-    # ✅ Limiter à 3 derniers jours pour ce graphe uniquement
+    # Limiter à 3 derniers jours pour ce graphe uniquement
     nb_jours_max = 3
     dates_disponibles = sorted(visiteurs_plot["date"].unique())
     dates_limite = dates_disponibles[:nb_jours_max]
@@ -165,7 +145,7 @@ def main():
     )
     st.plotly_chart(fig_v1, use_container_width=True)
 
-    st.subheader("💸 Transactions")
+    st.subheader("💸 Données des Transactions")
     col3, col4 = st.columns(2)
     col3.metric("Transactions", int(transactions_filtrées["nb_transactions"].sum()))
     col4.metric("CA (€)", f"{transactions_filtrées['chiffre_affaires'].sum():,.0f}")
@@ -175,7 +155,7 @@ def main():
         + " "
         + transactions_filtrées["heure_str"]
     )
-    # ✅ Agrégation + datetime propre pour le graphe CA
+    # Agrégation + datetime propre pour le graphe CA
     transactions_plot = transactions_filtrées.groupby(
         ["date", "heure"], as_index=False
     ).agg({"chiffre_affaires": "sum"})
@@ -201,9 +181,10 @@ def main():
         labels={"datetime": "Date", "chiffre_affaires": "Chiffre d'affaires (€)"},
     )
     fig_ca.update_layout(xaxis=dict(tickformat="%a %d %b"))
+    fig_ca.update_traces(line_color="#00A676")
     st.plotly_chart(fig_ca, use_container_width=True)
 
-    # 🔁 COMPARAISON AGRÉGÉE (avec tous les capteurs du magasin)
+    # COMPARAISON AGRÉGÉE (avec tous les capteurs du magasin)
     st.subheader("📉 Visiteurs vs Transactions (agrégés - tous capteurs)")
 
     visiteurs_magasin_agg = (
@@ -236,7 +217,7 @@ def main():
     )
     col6.metric("CA / Visiteur", f"{df_merge['ca_par_visiteur'].mean():.2f} €")
 
-    # ✅ Taux de conversion global par jour (pondéré)
+    # Taux de conversion global par jour (pondéré)
     df_conversion_jour = (
         df_merge.groupby(df_merge["date"].dt.date)
         .agg({"nb_visiteurs": "sum", "nb_transactions": "sum"})
@@ -256,10 +237,11 @@ def main():
         text="nb_visiteurs",
         title="Taux de conversion global par jour",
         labels={"date_str": "Date", "taux_conversion": "Taux de conversion"},
+        color_discrete_sequence=["#3D90D7"]  # Variante plus vibrante
     )
     st.plotly_chart(fig_tc_jour, use_container_width=True)
 
-    # ✅ Taux de conversion global par heure (pondéré)
+    # Taux de conversion global par heure (pondéré)
     df_conversion = (
         df_merge.groupby("heure_str")
         .agg({"nb_visiteurs": "sum", "nb_transactions": "sum"})
@@ -276,6 +258,7 @@ def main():
         text="nb_visiteurs",  # facultatif : affiche le volume de visiteurs sur chaque barre
         title="Taux de conversion global par heure",
         labels={"heure_str": "Heure", "taux_conversion": "Taux de conversion"},
+        color_discrete_sequence=["#3B8ED0"]  # Conversion
     )
     st.plotly_chart(fig_tc, use_container_width=True)
 
