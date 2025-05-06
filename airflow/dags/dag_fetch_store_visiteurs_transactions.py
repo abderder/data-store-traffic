@@ -51,7 +51,12 @@ def fetch_data_from_api(ti):
     capteurs = pd.read_csv(f"{local_dir}/capteurs.csv")
 
     paris_time = datetime.now(pytz.timezone("Europe/Paris")) - timedelta(hours=1)
-    year, month, day, hour = paris_time.year, paris_time.month, paris_time.day, paris_time.hour - 1
+    year, month, day, hour = (
+        paris_time.year,
+        paris_time.month,
+        paris_time.day,
+        paris_time.hour,
+    )
     # year, month, day, hour = 2025, 5, 2, 12
 
     all_visiteurs = []

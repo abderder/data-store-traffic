@@ -40,16 +40,12 @@ def load_csv_data():
 
 
 def get_visiteurs_data(conn):
-    df = pd.read_sql(
-        "SELECT * FROM analytics.visiteurs where date like '2024-05-%'", conn
-    )
+    df = pd.read_sql("SELECT * FROM analytics.visiteurs", conn)
     return df
 
 
 def get_transactions_data(conn):
-    df = pd.read_sql(
-        "SELECT * FROM analytics.transactions where date like '2024-05-%'", conn
-    )
+    df = pd.read_sql("SELECT * FROM analytics.transactions", conn)
     return df
 
 
@@ -70,6 +66,13 @@ def main():
     # Chargement des données
     visiteurs_df, transactions_df = load_cached_data()
     sensors_df, stores_df = load_csv_data()
+
+    if visiteurs_df.empty and transactions_df.empty:
+        st.error("Aucune donnée n'a été chargé!")
+    if visiteurs_df.empty:
+        st.error("Aucune donnée des vistiteurs n'a été chargé!")
+    if transactions_df.empty:
+        st.error("Aucune donnée des transactions n'a été chargé!")
 
     stores_df = stores_df[["store_id", "city_store"]]
     sensors_df = sensors_df[["store_id", "sensor_id"]]
