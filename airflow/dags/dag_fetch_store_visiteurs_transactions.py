@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.hooks.base import BaseHook
 from datetime import datetime, timedelta
+import pytz
 import pandas as pd
 import urllib.parse
 import shutil
@@ -49,9 +50,9 @@ def fetch_data_from_api(ti):
     magasins = pd.read_csv(f"{local_dir}/magasins.csv")
     capteurs = pd.read_csv(f"{local_dir}/capteurs.csv")
 
-    # now = datetime.utcnow()
-    # year, month, day, hour = now.year, now.month, now.day, now.hour-1
-    year, month, day, hour = 2025, 5, 2, 12
+    paris_time = datetime.now(pytz.timezone("Europe/Paris")) - timedelta(hours=1)
+    year, month, day, hour = paris_time.year, paris_time.month, paris_time.day, paris_time.hour - 1
+    # year, month, day, hour = 2025, 5, 2, 12
 
     all_visiteurs = []
     all_transactions = []
@@ -129,12 +130,12 @@ def upload_to_blob():
     sas_url = extras["sas_url"]
     sas_token = extras["sas_token"]
 
-    # now = datetime.utcnow()
-    # date_str = now.strftime("%Y-%m-%d")
-    # hour_str = now.strftime("%H")
-    year, month, day, hour = 2025, 5, 2, 12
-    date_str = "2025-05-02"
-    hour_str = 12
+    paris_time = datetime.now(pytz.timezone("Europe/Paris")) - timedelta(hours=1)
+    date_str = paris_time.strftime("%Y-%m-%d")
+    hour_str = paris_time.strftime("%H")
+
+    # date_str = "2025-05-02"
+    # hour_str = 12
 
     # Découper sas_url correctement
     parsed_url = urllib.parse.urlparse(sas_url)
