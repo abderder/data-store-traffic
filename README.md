@@ -1,6 +1,7 @@
 # DataMag360 — Pipeline de Données Cloud Moderne
 
 **DataMag360** est un projet de data engineering simulant une chaîne de traitement de données moderne et automatisée. Il vise à démontrer la valeur d’une architecture cloud scalable de bout en bout.
+[Voir le Dashboard en ligne](https://datamag360.streamlit.app/)
 
 ## 🎯 Objectifs
 
@@ -114,6 +115,10 @@ Le pipeline couvre l’ensemble du cycle de vie des données : génération → 
 - Déploiement **automatisé** via Render + Streamlit Cloud
 
 ---
+[Tester l’API FastAPI (exemple avec capteur 9 à Paris)](https://data-store-traffic.onrender.com/visiteurs?city_store=PARIS&sensor_id=9&year=2024&month=10&day=14&hour=12)
+
+[Accéder au Dashboard Streamlit](https://datamag360.streamlit.app/)
+
 
 ## ✅ Conclusion
 
