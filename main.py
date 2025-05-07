@@ -10,6 +10,10 @@ import pandas as pd
 from io import StringIO
 from dotenv import load_dotenv
 import os
+import hashlib
+import random
+import pytz
+
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -27,7 +31,7 @@ app = FastAPI()
 
 @app.get("/visiteurs")
 def visit(
-    store_name: str = None,
+    city_store: str = None,
     year: int | None = None,
     month: int | None = None,
     day: int | None = None,
@@ -35,18 +39,18 @@ def visit(
     sensor_id: int | None = None,
 ) -> JSONResponse:
     # Store name vérification
-    if store_name is None or store_name.strip() == "":
-        raise HTTPException(status_code=404, detail="Nom du magasin obligatoire")
+    if city_store is None or city_store.strip() == "":
+        raise HTTPException(status_code=404, detail="Ville du magasin obligatoire")
 
-    if store_name.lower() not in magasins["store_name"].str.lower().values:
+    if city_store.lower() not in magasins["city_store"].str.lower().values:
         raise HTTPException(status_code=404, detail="Store non disponible")
 
     # Sensors verification
     storeid = magasins.loc[
-        magasins["store_name"].str.contains(store_name, case=False), "store_id"
+        magasins["city_store"].str.contains(city_store, case=False), "store_id"
     ].iloc[0]
     coef_store = magasins.loc[
-        magasins["store_name"].str.contains(store_name, case=False), "coef"
+        magasins["city_store"].str.contains(city_store, case=False), "coef"
     ].iloc[0]
     sensors_data = list(
         capteurs.loc[capteurs["store_id"] == storeid, ["sensor_id", "coef"]].itertuples(
@@ -79,7 +83,9 @@ def visit(
             status_code=404,
             detail="Si tu donnes une heure, la date (year, month, day) doit être complète.",
         )
-    today = date.today()
+    paris_tz = pytz.timezone("Europe/Paris")
+    now = datetime.now(paris_tz)
+    today = now.date()
     d = None
     if all(filled):
         try:
@@ -94,7 +100,7 @@ def visit(
             )
 
     # Heure vérification
-    now = datetime.now()
+    now = datetime.now(paris_tz)
     current_hour = now.hour
     one_hour_ago = (current_hour - 1) % 24
     if hour is not None:
@@ -105,7 +111,7 @@ def visit(
                 status_code=404,
                 detail="L'heure est invalide ! L'heure doit être compris entre 0 et 23",
             )
-        now = datetime.now()
+        now = datetime.now(paris_tz)
         current_hour = now.hour
         if d == today:
             if t.hour > one_hour_ago:
@@ -114,9 +120,9 @@ def visit(
                     content={"message": "Data non disponible pour cette date"},
                 )
     if (all(param is None for param in [year, month, day, hour, sensor_id])) or (
-        d == today
+        d == today and hour is None and sensor_id is None
     ):
-        # Exécuter la fonction spéciale si juste store_name est donné
+        # Exécuter la fonction spéciale si juste city_store est donné
         visiteurs = RealisticStoreSensorPerDay(
             storeid, sensors_data, today, coef_store, one_hour_ago
         )
@@ -156,7 +162,9 @@ def visit(
                 "visiteurs": visiteurs,
             },
         )
-    if all(param is None for param in [year, month, day, hour]) or (d == today):
+    if all(param is None for param in [year, month, day, hour]) or (
+        d == today and hour is None
+    ):
         coef_sensor = next(
             (coeff for sensor_id2, coeff in sensors_data if sensor_id2 == sensor_id),
             None,
@@ -248,5 +256,96 @@ def visit(
             "message": f"Nombre de visiteurs le {d} à {t} pour capteur {sensor_id} est : {visiteurs}",
             "is_closed": False,
             "visiteurs": visiteurs,
+        },
+    )
+
+
+@app.get("/transactions")
+def simuler_transactions(
+    city_store: str, year: int, month: int, day: int, hour: int
+) -> JSONResponse:
+    paris_tz = pytz.timezone("Europe/Paris")
+    if city_store.lower() not in magasins["city_store"].str.lower().values:
+        raise HTTPException(status_code=404, detail="Magasin introuvable")
+    try:
+        date_transaction = paris_tz.localize(datetime(year, month, day, hour))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Date ou heure invalide")
+    now = datetime.now(paris_tz)
+    if date_transaction > now or date_transaction.date() < date.fromisoformat(
+        "2021-01-01"
+    ):
+        return JSONResponse(
+            status_code=404, content={"message": "Pas de données pour cette date"}
+        )
+
+    if date_transaction.weekday() >= 5:  # 5 = samedi, 6 = dimanche
+        return JSONResponse(
+            status_code=200,
+            content={
+                "message": "Magasin fermé le week-end",
+                "transactions": -1,
+                "chiffre_affaires": -1,
+            },
+        )
+
+    if hour > 19 or hour < 9:
+        return JSONResponse(
+            status_code=200, content={"transactions": 0, "chiffre_affaires": 0}
+        )
+
+    storeid = magasins.loc[
+        magasins["city_store"].str.contains(city_store, case=False), "store_id"
+    ].iloc[0]
+    coef_store = magasins.loc[
+        magasins["city_store"].str.contains(city_store, case=False), "coef"
+    ].iloc[0]
+    sensors_data = list(
+        capteurs.loc[capteurs["store_id"] == storeid, ["sensor_id", "coef"]].itertuples(
+            index=False, name=None
+        )
+    )
+    coef_date = {
+        0: 0.4,  # Lundi
+        1: 0.5,  # Mardi
+        2: 0.6,  # Mercredi
+        3: 0.5,  # Jeudi
+        4: 0.6,  # Vendredi
+    }
+
+    coef_heure = {
+        9: 0.3,
+        10: 0.5,
+        11: 0.6,
+        12: 0.7,
+        13: 0.9,
+        14: 0.6,
+        15: 0.6,
+        16: 0.6,
+        17: 0.9,
+        18: 0.9,
+        19: 0.7,
+    }
+    # Génération d'une seed unique
+    texte = f"{day}/{month}/{year}-{hour}-{storeid}"
+    hash_obj = hashlib.sha256(texte.encode())
+    seed = int(hash_obj.hexdigest(), 16)
+    random.seed(seed)
+
+    visiteurs = random.randint(90, 120)
+    date_coeff = coef_date.get(date_transaction.weekday(), 1.0)
+    heure_coef = coef_heure.get(hour, 1.0)
+    base_visiteurs = visiteurs * coef_store * date_coeff * heure_coef
+    visiteurs_totaux = int(base_visiteurs * sum(coef for _, coef in sensors_data))
+
+    taux_conversion = random.uniform(0.15, 0.30)
+    transactions = int(visiteurs_totaux * taux_conversion)
+    montants_transactions = [random.uniform(10, 120) for _ in range(transactions)]
+    chiffre_affaires = sum(montants_transactions)
+    return JSONResponse(
+        status_code=200,
+        content={
+            "transactions": transactions,
+            "chiffre_affaires": round(chiffre_affaires, 2),
         },
     )
